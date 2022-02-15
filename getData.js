@@ -1,8 +1,15 @@
 const axios = require('axios');
 
-const getData = async (url) => {
-    const response = await axios.get(url);
-    return response
+class User {
+    constructor(user) {
+        this.user = user;
+    }
+    async getData (url) {
+        const response = await axios.get(url);
+        return response
+    }
 }
 
-module.exports = {getData}
+
+
+module.exports = {User}
