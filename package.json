@@ -1,0 +1,25 @@
+{
+  "name": "get-request-tddproject",
+  "version": "1.0.0",
+  "description": "Creating a function executing GET request with TDD approach",
+  "main": "index.js",
+  "scripts": {
+    "test": "mocha"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/AlexanderTkach/GET-request-TDDproject.git"
+  },
+  "author": "Alex Tkach",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/AlexanderTkach/GET-request-TDDproject/issues"
+  },
+  "homepage": "https://github.com/AlexanderTkach/GET-request-TDDproject#readme",
+  "devDependencies": {
+    "axios": "^0.26.0",
+    "chai": "^4.3.6",
+    "mocha": "^9.2.0",
+    "sinon": "^13.0.1"
+  }
+}
