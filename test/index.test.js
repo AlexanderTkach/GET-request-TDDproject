@@ -1,108 +1,124 @@
-const expect = require('chai').expect;
 const sinon = require("sinon");
+const chai = require('chai');
+const chaiAsPromised = require('chai-as-promised');
+const sinonChai = require('sinon-chai');
+const expect = chai.expect;
 const axios = require("axios");
-const { User } = require('../getData')
-
+const { User } = require('../getData');
+const { assert } = require("chai");
+const dataExample = require('./dataExample')
+chai.use(sinonChai);
+chai.use(chaiAsPromised);
 
 describe('Making GET request to "example.com"', () => {
     
+    let stub;
+    const user = new User;
+    beforeEach(() => {
+    stub = sinon.stub(axios, "get");
+    stub.resolves({
+        status: 200,
+        headers: { "content-type": "text/html; charset=UTF-8" },
+        data: dataExample
+    });
+    });
+    afterEach(() => {
+        stub.restore();
+    });
+
     describe('Successfull request', () => {
+        it('should make GET request only once"', async () => {
+            let spy = sinon.spy(user, "getData")
+            await user.getData('http://www.example.com')
+            expect(spy).to.have.been.calledOnce;
 
-        let stub;
-        const user = new User;
-        beforeEach(() => {
-        stub = sinon.stub(user, "getData");
-        });
-        afterEach(() => {
-            stub.restore();
+            spy.restore();
         });
 
-        it('should respond with a status code 200', async () => {
-
-            stub.withArgs("http://example.com").resolves({
-            status: 200,
-            headers: { "content-type": "text/html; charset=UTF-8" },
-            data: 'string'
+        it('should use only GET method', async () => {
+            let postSpy = sinon.spy(axios, 'post');
+            let putSpy = sinon.spy(axios,"put");
+            let deleteSpy = sinon.spy(axios, "delete");
+            await user.getData('http://www.example.com')
+            expect(postSpy.calledOnce).to.be.false;
+            expect(putSpy.calledOnce).to.be.false;
+            expect(deleteSpy.calledOnce).to.be.false;
         });
 
-            const result = await user.getData("http://example.com");
-            expect(result.status).to.equal(200);
-        });
+        it('should call "http://www.example.com"', async () => {
+            let spy = sinon.spy(user,'getData');
+            await user.getData('http://www.example.com')
+            expect(spy).to.have.been.calledWith('http://www.example.com');
 
+            spy.restore();
+        }); 
 
-
-
-
-        
-        it('should have an endpoint http://www.example.com', () => {
-            
-        });
-        it('should use a GET method', () => {
-            
-        });
-        it('should respond with content-type header text/html', async () => {
-            /* const result = await user.getData("http://example.com");
-            expect(result.headers).to.include({
-                "content-type": "text/html; charset=UTF-8",
-              }); */
-        });
-        it('should respond with data in string format', async () => {
-            /* const result = await axios.get("http://example.com");
-            expect(result.data).to.be.a('string') */
-        });
-        it('should return data containing at least one char', () => {
-
+        it('should return response if succeeded with status code 200', async () => {
+            const result = await user.getData();
+            assert.isOk(result.data)
         });
     })
 
     describe('Unsuccessfull request', () => {
+        it('should throw "Bad Request" if fails with status code 400', async () => {
+            stub.resolves({
+            status: 400,
+        });
+            const result = user.getData("http://example.com");
+            await expect(result).to.eventually.rejectedWith('Bad Request');
+        }); 
+        
+        it('should throw "Not Found" if fails with status code 404', async () => {
+            stub.resolves({
+            status: 404,
+        });
+            const result = user.getData("http://example.com");
+            await expect(result).to.eventually.rejectedWith('Not Found');
+        });
 
-        /* let stub;
-        beforeEach(() => {
-        stub = sinon.stub(axios, "get");
-        stub.withArgs("http://example.com").resolves({
-            status: 400
-        });
-        afterEach(() => {
-            stub.restore();
-        });
-        }) */
-
-        it('should respond with status code 405 if the specified request method is not a GET', () => {
-            
-        });
-        it('should throw an error message: "the request method should be GET" if the specified request method is not a GET', () => {
-            
-        });
-        it('should respond with status code 400 if the endpoint is misspelled', () => {
-            
-        });
-        it('should throw an error message: "incorrect endpoint" if the endpoint is misspelled', () => {
-
-        });
-        it('should convert json to string format if data retrieved came with "application/json" header', () => {
-
-        });
-        it('should be a not empty string', () => {
-
-        });
+        it('should throw error if content type not text/html', async () => {
+            stub.resolves({
+                status: 200,
+                headers: { "content-type": "application/json" },
+            });
+            const result = user.getData("http://example.com");
+            await expect(result).to.eventually.rejectedWith('not text/html');
+        })
     })
-    describe('Data returned in response came with content-type header "application/json"', () => {
-        it('should convert json to string format', () => {
-
-        });
-    });
     describe('Server is not responding', () => {
-        it('should respond with status code 500', () => {
-            
+        it('should throw "Server is not responding if fails with status code 500"', async () => {
+            stub.resolves({
+            status: 500,
         });
-        it('should throw en error message "Something wrong with connection to a server. Do you want to try again?"', () => {
+            let consoleStub = sinon.stub(console, "error");
+            const clock = sinon.useFakeTimers();
+            await user.getData();
+            clock.tick(2000);
+            expect(consoleStub).to.be.called;
+        });
 
-        });
+        it('should retry to connect if failed to connect', async() => {
+            stub.resolves({
+                status: 500
+            });
+            let retrySpy = sinon.spy(user, "retryRequest");
+            const clock = sinon.useFakeTimers();
+            await user.getData("http://example.com");
+            clock.tick(2000);
+            expect(retrySpy).to.be.calledOnce;
+        })
     });
-    describe('data retrieved succsessfully', () => {
-        it('should log the data into the console', () => {
 
+    describe('data retrieved succsessfully', () => {
+        it('should log the data into the console', async () => {
+            stub.resolves({
+                status: 200,
+                headers: { "content-type": "text/html; charset=UTF-8" },
+                data: dataExample
+            })
+            sinon.spy(console,"log")
+            await user.getData();
+            expect(console.log).to.be.called;
         });
     });
 });
