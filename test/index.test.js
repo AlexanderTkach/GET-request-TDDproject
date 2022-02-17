@@ -86,7 +86,7 @@ describe('Making GET request to "example.com"', () => {
         })
     })
     describe('Server is not responding', () => {
-        it('should throw "Server is not responding if fails with status code 500"', async () => {
+        it('should outputs an error message to the console if fails with status code 500"', async () => {
             stub.resolves({
             status: 500,
         });
